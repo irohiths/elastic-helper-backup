@@ -24,7 +24,7 @@ public class SolrHelper {
 
             while(count<totalDocs) {
 
-                System.out.println("retrieving solr records cursorMarkValue : " + cursorMarkValue);
+//                System.out.println("retrieving solr records cursorMarkValue : " + cursorMarkValue);
                 Request request = new Request.Builder()
 //                    .url("http://event-repostg.handsonconnect.org:8983/solr/pcevents/select?wt=json&q=%2A:%2A&sort=synchModstamp%20ASC,id%20ASC&rows=100&cursorMark=%2A")
                         .url("http://event-repostg.handsonconnect.org:8983/solr/pcevents/select?wt=json&q=%2A:%2A&sort=synchModstamp%20ASC,id%20ASC&rows=100&cursorMark=" + cursorMarkValue)
@@ -42,7 +42,7 @@ public class SolrHelper {
 
                 Response response = client.newCall(request).execute();
                 JSONObject responseBody = new JSONObject(response.body().string());
-                System.out.println("solr  response : " + responseBody.toString());
+//                System.out.println("solr  response : " + responseBody.toString());
                 JSONArray volOpDocs = responseBody.getJSONObject("response").getJSONArray("docs");
 
                 for(int i = 0; i < volOpDocs.length() ; i++){

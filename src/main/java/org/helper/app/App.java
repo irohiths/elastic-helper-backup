@@ -1,13 +1,12 @@
 package org.helper.app;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
+import org.helper.app.helpers.RandomDates;
 import org.helper.elasticsearch.commands.PostCalls;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.index.IndexRequest;
@@ -34,11 +33,59 @@ public class App
 	public static SolrHelper solrHelper = new SolrHelper();
 	public static final Pattern PUNCTUATION = Pattern.compile("[^0-9\\s\\p{L}]");
 	public static final Pattern WHITE_SPACES = Pattern.compile("\\s");
-	
+	public static final ArrayList<String> randomContentNamePool = new ArrayList<>();
+	public static Random rand = new Random();
+	public static ArrayList<String> trueFalseList = new ArrayList<>(Arrays.asList(
+			"true",
+			"true",
+			"true",
+			"true",
+			"true",
+			"true",
+			"true",
+			"true",
+			"true",
+			"false"));
+	public static ArrayList<String> volOpTypesList = new ArrayList<>(Arrays.asList(
+			"One Time",
+			"Shifts",
+			"Flexible",
+			"Recurring",
+			"Virtual"));
+
+	public static ArrayList<String> daysOfTheWeek = new ArrayList<>(Arrays.asList(
+			"Monday",
+			"Tuesday",
+			"Wednesday",
+			"Thursday",
+			"Thursday",
+			"Friday",
+			"Saturday",
+			"Sunday"));
+
+	public static ArrayList<String> timesOfTheDay = new ArrayList<>(Arrays.asList(
+			"Morning",
+			"Afternoon",
+			"Evening"));
+
+	public static ArrayList<String> preferredSkillsList = new ArrayList<>(Arrays.asList(
+			"Active Listening",
+			"Communication",
+			"Computer Skills",
+			"Customer Service",
+			"Management Skills",
+			"Problem-Solving",
+			"Time Management",
+			"Transferable Skills",
+			"Self-motivation",
+			"Adaptability",
+			"Decision Making"));
+
+
 	public static void main( String[] args )
 	{
 		copyESIndexes();
-//		copyVolOpFromSolr();
+		copyVolOpFromSolr();
 	}
 
 
@@ -48,9 +95,9 @@ public class App
 		String fromESServerName = "specialdeves.makanaplatform.com";
 
 		ArrayList<String> indexNamesList = new ArrayList<>();
+		indexNamesList.add("qa2.gs-npopage-en");
 		indexNamesList.add("qa2.gs-campaign-en");
 		indexNamesList.add("qa2.gs-impactfund-en");
-		indexNamesList.add("qa2.gs-npopage-en");
 		indexNamesList.add("qa2.gs-story-en");
 
 		String toESServerName = "localhost";
@@ -86,12 +133,12 @@ public class App
 						totalDocuments,
 						esURL);
 
-//			RestHighLevelClient esClient = esClientObj.getEsClient();
+			RestHighLevelClient esClient = esClientObj.getEsClient();
 
-//			if(esClient!=null) {
-//				System.out.println("Closing ES Client");
-//				esClient.close();
-//			}
+			if(esClient!=null) {
+				System.out.println("Closing ES Client");
+				esClient.close();
+			}
 
 				System.out.println("Finished Running Record Updater!");
 			} catch (IOException e) {
@@ -107,7 +154,7 @@ public class App
 	private static void copyVolOpFromSolr(){
 		String toESServerName = "localhost";
 		String clusterName = "DarwinESCluster_DEV";
-		String indexName = "qa2.gs-story-en";
+		String indexName = "qa2.gs-volunteering-en";
 		Integer esPortNum = 9200;
 		Integer bulkSize = 1000;
 
@@ -130,10 +177,10 @@ public class App
 
 			RestHighLevelClient esClient = esClientObj.getEsClient();
 
-//			if(esClient!=null) {
-//				System.out.println("Closing ES Client");
-//				esClient.close();
-//			}
+			if(esClient!=null) {
+				System.out.println("Closing ES Client");
+				esClient.close();
+			}
 
 			System.out.println("Finished Running Record Updater!");
 		} catch (IOException e) {
@@ -239,6 +286,9 @@ public class App
 	//				);
 
 
+				//Populate fields needed for search use cases
+				sourceObj = populateMissingFields(sourceObj, indexName);
+
 					//Insert record into local ES instance
 					IndexRequest indexRequest = new IndexRequest(
 							indexName,
@@ -271,6 +321,124 @@ public class App
 
 	}
 
+	private static JSONObject populateMissingFields(JSONObject sourceObj, String indexName) {
+		//Add related_content_name & aka_name
+		if(indexName.contains("npopage") && sourceObj.has("name")){
+			JSONArray nameArray = sourceObj.getJSONArray("name");
+			for(int j = 0; j<nameArray.length(); j++){
+				randomContentNamePool.add(nameArray.getString(j));
+			}
+		}
+
+		if(sourceObj.has("name") && sourceObj.has("hint")){
+			String akaName;
+      // get first string token from name and combine it with non Goal cause name
+//      		System.out.println("sourceObj.getJSONArray(\"name\") = " + sourceObj.getJSONArray("name"));
+			String nameToken = sourceObj.getJSONArray("name").getString(0).split(" ")[0];
+
+			String causeName = null;
+			for(int i = 0; i< sourceObj.getJSONArray("hint").length(); i++){
+				if(!sourceObj.getJSONArray("hint").getString(i).contains("Goal")) {
+					causeName = sourceObj.getJSONArray("hint").getString(i);
+				}
+			}
+			if(causeName!=null) {
+				akaName = nameToken + " " + causeName;
+			}else {
+				akaName = nameToken;
+			}
+			sourceObj.put("aka_name", akaName);
+		}
+
+		if(!sourceObj.has("related_content_name") && randomContentNamePool.size()>0){
+			int counter = 3;
+			HashSet<String> relatedContentNamesSet = new HashSet<>();
+			while(counter > 0) {
+				relatedContentNamesSet.add(
+						randomContentNamePool.get(rand.nextInt(randomContentNamePool.size())));
+
+				counter--;
+			}
+			sourceObj.put("related_content_name", relatedContentNamesSet.toArray());
+		}
+
+
+		sourceObj.put("active_status", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+		sourceObj.put("preferred_by_workplace", 10000 - rand.nextInt(9000));
+		sourceObj.put("created_by", 10000 - rand.nextInt(9000));
+
+
+
+
+		//add content specific data
+
+		//Campaign
+		if(indexName.contains("campaign")){
+			sourceObj.put("campaign.has_donations", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+			sourceObj.put("campaign.has_volOp", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+			sourceObj.put("campaign.volOp_owner", 10000 - rand.nextInt(9000));
+			sourceObj.put("campaign.goal", rand.nextInt(100)*10000);
+			sourceObj.put("campaign.progress_towards_goal", rand.nextInt(100));
+
+		}
+
+		if(indexName.contains("volunteering")){
+			sourceObj.put("volunteering.goal", rand.nextInt(100)*10000);
+			sourceObj.put("volunteering.progress_towards_goal", rand.nextInt(100));
+
+			sourceObj.put("volunteering.volOp_types", volOpTypesList.get(rand.nextInt(volOpTypesList.size())));
+
+			if(sourceObj.has("active_status")
+					&& sourceObj.getString("active_status").equalsIgnoreCase("true")){
+				sourceObj.put("volunteering.start_date", RandomDates.createRandomDate(2017, 2018));
+				sourceObj.put("volunteering.end_date", RandomDates.createRandomDate(2020, 2021));
+			} else {
+				sourceObj.put("volunteering.start_date", RandomDates.createRandomDate(2015, 2016));
+				sourceObj.put("volunteering.end_date", RandomDates.createRandomDate(2017, 2018));
+			}
+
+			HashSet<String> volOpAvailableDaysList = new HashSet<>();
+			Integer maxDaysOfTheWeek = rand.nextInt(6);
+			for(int i=0;i<=maxDaysOfTheWeek;i++){ //add days
+				volOpAvailableDaysList.add(daysOfTheWeek.get(rand.nextInt(daysOfTheWeek.size())));
+
+			}
+			sourceObj.put("volOp.available_days", volOpAvailableDaysList.toArray());
+
+
+			HashSet<String> volOpAvailableTimesList = new HashSet<>();
+			Integer maxAvailableTimes = rand.nextInt(2);
+			for(int i=0;i<=maxAvailableTimes;i++){ //add times of day
+				volOpAvailableTimesList.add(timesOfTheDay.get(rand.nextInt(timesOfTheDay.size())));
+
+			}
+			sourceObj.put("volOp.available_time", volOpAvailableTimesList.toArray());
+
+			HashSet<String> volOpPreferredSkillsList = new HashSet<>();
+			Integer maxPreferredSkills= rand.nextInt(5);
+			for(int i=0;i<=maxPreferredSkills;i++){ //add times of day
+				volOpPreferredSkillsList.add(preferredSkillsList.get(rand.nextInt(preferredSkillsList.size())));
+
+			}
+			sourceObj.put("volOp.preferred_skills", volOpPreferredSkillsList.toArray());
+
+		}
+
+		if(indexName.contains("story")) {
+			if(sourceObj.has("active_status")
+					&& sourceObj.getString("active_status").equalsIgnoreCase("true")){
+				sourceObj.put("story.start_date", RandomDates.createRandomDate(2017, 2018));
+				sourceObj.put("story.end_date", RandomDates.createRandomDate(2020, 2021));
+			} else {
+				sourceObj.put("story.start_date", RandomDates.createRandomDate(2015, 2016));
+				sourceObj.put("story.end_date", RandomDates.createRandomDate(2017, 2018));
+			}
+		}
+
+
+		return sourceObj;
+	}
+
 	private static void processSolrResponse(SearchResponse esSearchResponse,
 											  BulkProcessor bulkProcessor,
 											  String indexName,
@@ -295,14 +463,14 @@ public class App
 //				JSONObject sourceObj = aRecordObj.getJSONObject("_source");
 				String indexType = "_doc";
 				currentCount++;
+				sourceObj.remove("id");
 //				System.out.println("hit " + (currentCount) + " : "
 //						+ " type : " + indexType
 //						+ " indexName : " + indexName
-//						+ " id : " + id
-//						+ " record : " + aRecordObj.toString()
+//						+ " record : " + sourceObj.toString()
 //				);
 
-
+				sourceObj = populateMissingFields(sourceObj, indexName);
 				//Insert record into local ES instance
 				IndexRequest indexRequest = new IndexRequest(
 						indexName,

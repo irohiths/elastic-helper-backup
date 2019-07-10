@@ -18,7 +18,7 @@ public class PostCalls {
 		ScrollResponse retVal=new ScrollResponse();
 		OkHttpClient client = new OkHttpClient();
 
-    	System.out.println("Scan esURL : " + esURL);
+//    	System.out.println("Scan esURL : " + esURL);
 		MediaType mediaType = MediaType.parse("application/json");
 		RequestBody body = RequestBody.create(mediaType, "{\n    \"scroll\" : \"" +keepAliveTime+ "m\", \n    \"scroll_id\" : \""
 				+ scrollID
@@ -36,7 +36,7 @@ public class PostCalls {
 		Response response = client.newCall(request).execute();
 		
 		String esResponse = response.body().string();
-    	System.out.println("Scan esResponse : " + esResponse);
+//    	System.out.println("Scan esResponse : " + esResponse);
 		JSONObject responseObj = new JSONObject(esResponse);
 		retVal.setScrollID(responseObj.getString("_scroll_id"));
 		Integer totalHitsCount = responseObj.getJSONObject("hits").getInt("total");
@@ -63,7 +63,7 @@ public class PostCalls {
 
 		Response response = client.newCall(request).execute();
 		String esResponse = response.body().string();
-		System.out.println("Scroll esResponse : " + esResponse);
+//		System.out.println("Scroll esResponse : " + esResponse);
 		JSONObject responseObj = new JSONObject(esResponse);
 		retVal.setScrollID(responseObj.getString("_scroll_id"));
 		Integer totalHitsCount = responseObj.getJSONObject("hits").getInt("total");
