@@ -10,7 +10,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.apache.http.message.BasicHeader;
 import org.apache.lucene.index.ExitableDirectoryReader;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.bulk.BackoffPolicy;
@@ -22,6 +29,7 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
@@ -69,7 +77,25 @@ public class ESClient {
 			System.out.println("Creating ES Client : " 
 					+ "serverName " + serverName
 					+ " portNum " +  portNum);
-			client = new RestHighLevelClient(RestClient.builder(new HttpHost(InetAddress.getByName(serverName), portNum, "http")));
+
+      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+      credentialsProvider.setCredentials(
+          AuthScope.ANY, new UsernamePasswordCredentials("elastic", "iODHtO8mrSijxEThTXex\n"));
+
+			client = new RestHighLevelClient(
+					RestClient.builder(new HttpHost(InetAddress.getByName(serverName), portNum, "https"))
+					.setDefaultHeaders(
+					new Header[] {
+							new BasicHeader(
+									"Authorization",
+									"Basic " + "ZWxhc3RpYzppT0RIdE84bXJTaWp4RVRoVFhleA==")})
+//							.setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
+//								@Override
+//								public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpAsyncClientBuilder) {
+//									return httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+//								}
+//							})
+			);
 			esClient=client;
 //			client = new RestHighLevelClient(RestClient.builder(new HttpHost("127.0.0.1", portNum, "http")));
 			

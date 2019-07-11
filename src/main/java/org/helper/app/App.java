@@ -84,12 +84,13 @@ public class App
 
 	public static void main( String[] args )
 	{
-		copyESIndexes();
-		copyVolOpFromSolr();
+		Integer totalDocuments = 1000;
+		copyESIndexes(totalDocuments);
+		copyVolOpFromSolr(totalDocuments);
 	}
 
 
-	private static void copyESIndexes() {
+	private static void copyESIndexes(Integer totalDocuments) {
 
 		//Elasticsearch server Settings for Upsert
 		String fromESServerName = "specialdeves.makanaplatform.com";
@@ -100,10 +101,11 @@ public class App
 		indexNamesList.add("qa2.gs-impactfund-en");
 		indexNamesList.add("qa2.gs-story-en");
 
-		String toESServerName = "localhost";
+//		String toESServerName = "localhost";
+		String toESServerName = "specialdeves.makanaplatform.com";
+
 		String clusterName = "DarwinESCluster_DEV";
 		Integer esPortNum = 9200;
-		Integer totalDocuments = 2000;
 		Integer bulkSize = 1000;
 
 
@@ -123,6 +125,7 @@ public class App
 //		String query = "{\"size\":"+ hitsSize + ",\"query\":{\"bool\":{\"must\":[{\"term\":{\"gdmi.countryName\":\"" + country + "\"}},{\"term\":{\"gdmi.nationalIdentifierTypeCode\":\""+ natIDTypeCode+ "\"}}]}}}";
 			String query = "{\n\t\"size\": " + hitsSize + ",\n    \"query\": {\n        \"match_all\": {}\n    }\n}";
 			try {
+				String toESIndexName = eachIndex.replace("qa2","search2");
 				ScrollResponse scrollResponse = esPostCallObj.makeScrollCall(query,
 						"5",
 						esURL + eachIndex); //search/scroll needs the index name
@@ -131,7 +134,8 @@ public class App
 						esClientObj.getBulkProcessor(),
 						esClientObj,
 						totalDocuments,
-						esURL);
+						esURL,
+						toESIndexName);
 
 			RestHighLevelClient esClient = esClientObj.getEsClient();
 
@@ -151,16 +155,14 @@ public class App
 		}
 	}
 
-	private static void copyVolOpFromSolr(){
+	private static void copyVolOpFromSolr(Integer totalDocuments){
 		String toESServerName = "localhost";
 		String clusterName = "DarwinESCluster_DEV";
-		String indexName = "qa2.gs-volunteering-en";
+		String indexName = "search2.gs-volunteering-en";
 		Integer esPortNum = 9200;
 		Integer bulkSize = 1000;
 
 		System.out.println( "Running ES Cluster Index Copier for : VolOp from Solr");
-
-		Integer totalDocuments = 1000;
 
 
 		ESClient esClientObj = new ESClient(
@@ -250,7 +252,8 @@ public class App
 											 BulkProcessor bulkProcessor,
 											 ESClient esClientObj,
 											 Integer totalDocs,
-											 String esURL
+											 String esURL,
+											 String indexName
 	) throws IOException, InterruptedException {
 
 		//totalDocs, we need to process this many records
@@ -275,7 +278,7 @@ public class App
 //				if(!aRecordObj.toString().toLowerCase().contains("test")) {
 					JSONObject sourceObj = aRecordObj.getJSONObject("_source");
 					String indexType = aRecordObj.getString("_type");
-					String indexName = aRecordObj.getString("_index");
+//					String indexName = aRecordObj.getString("_index");
 					String id = aRecordObj.getString("_id");
 					currentCount++;
 	//				System.out.println("hit " + (currentCount) + " : "
