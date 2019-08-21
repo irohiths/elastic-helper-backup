@@ -55,24 +55,39 @@ public class App {
   public static ArrayList<String> timesOfTheDay =
       new ArrayList<>(Arrays.asList("Morning", "Afternoon", "Evening"));
 
-  public static ArrayList<String> preferredSkillsList =
-      new ArrayList<>(
-          Arrays.asList(
-              "Active Listening",
-              "Communication",
-              "Computer Skills",
-              "Customer Service",
-              "Management Skills",
-              "Problem-Solving",
-              "Time Management",
-              "Transferable Skills",
-              "Self-motivation",
-              "Adaptability",
-              "Decision Making"));
+//  public static ArrayList<String> preferredSkillsList =
+//      new ArrayList<>(
+//          Arrays.asList(
+//              "Active Listening",
+//              "Communication",
+//              "Computer Skills",
+//              "Customer Service",
+//              "Management Skills",
+//              "Problem-Solving",
+//              "Time Management",
+//              "Transferable Skills",
+//              "Self-motivation",
+//              "Adaptability",
+//              "Decision Making"));
+
+  public static ArrayList<Long> preferredSkillsList =
+          new ArrayList<>(
+                  Arrays.asList(
+                          1000L, //"Active Listening",
+                          1001L, //"Communication",
+                          1002L, //"Computer Skills",
+                          1003L, //"Customer Service",
+                          1004L, //"Management Skills",
+                          1005L, //"Problem-Solving",
+                          1006L, //"Time Management",
+                          1007L, //"Transferable Skills",
+                          1008L, //"Self-motivation",
+                          1009L, //"Adaptability",
+                          1010L)); //Decision Making"));
 
   public static void main(String[] args) {
     Integer totalESDocuments = 10000;
-    Integer totalSolrDocuments = 1000000;
+    Integer totalSolrDocuments = 1000;
     copyESIndexes(totalESDocuments);
     copyVolOpFromSolr(totalSolrDocuments);
   }
@@ -89,9 +104,9 @@ public class App {
     //    indexNamesList.add("qa.gs-story-en");
 
     //		String toESServerName = "localhost";
-    String toESServerName = "specialdeves.makanaplatform.com";
+    String toESServerName = "developeres.makanaplatform.com";
 
-    String clusterName = "DarwinESCluster_DEV";
+    String clusterName = "developer";
     Integer esPortNum = 9200;
     Integer bulkSize = 1000;
 
@@ -109,8 +124,8 @@ public class App {
       String query =
           "{\n\t\"size\": " + hitsSize + ",\n    \"query\": {\n        \"match_all\": {}\n    }\n}";
       try {
-        String toESIndexName = eachIndex.replace("qa", "search2");
-        toESIndexName = toESIndexName.replace("gs", "globalsearch");
+        String toESIndexName = eachIndex.replace("qa", "rohitachar");
+        toESIndexName = toESIndexName.replace("gs", "v2.gs");
         ScrollResponse scrollResponse =
             esPostCallObj.makeScrollCall(
                 query, "5", esURL + eachIndex); // search/scroll needs the index name
@@ -144,7 +159,7 @@ public class App {
   private static void copyVolOpFromSolr(Integer totalDocuments) {
     String toESServerName = "specialdeves.makanaplatform.com";
     String clusterName = "DarwinESCluster_DEV";
-    String indexName = "search2.globalsearch-volunteering-en";
+    String indexName = "search2.globalsearch-volunteering-fr";
     Integer esPortNum = 9200;
     Integer bulkSize = 1000;
 
@@ -299,158 +314,163 @@ public class App {
   }
 
   public static JSONObject populateMissingFields(JSONObject sourceObj, String indexName) {
-    //copy city and state to _source payload
-    if(sourceObj.has("ui")){
-      JSONObject uiObject = sourceObj.getJSONObject("ui");
-      if(uiObject.has("city")){
-        sourceObj.put("city", uiObject.getString("city"));
-      }
-      if(uiObject.has("state")){
-        sourceObj.put("state", uiObject.getString("state"));
-      }
-    }
-
-    // Add related_content_name & aka_name
-    if (indexName.contains("npopage") && sourceObj.has("name")) {
-      JSONArray nameArray = sourceObj.getJSONArray("name");
-      for (int j = 0; (j < nameArray.length() && randomContentNamePool.size() < 10000); j++) {
-        randomContentNamePool.add(nameArray.getString(j));
-      }
-    }
-
-    if (sourceObj.has("name") && sourceObj.has("hint") && !indexName.contains("volunteering")) {
-      String akaName;
-      // get first string token from name and combine it with non Goal cause name
-      //      		System.out.println("sourceObj.getJSONArray(\"name\") = " +
-      // sourceObj.getJSONArray("name"));
-      String nameToken = sourceObj.getJSONArray("name").getString(0).split(" ")[0];
-
-      String causeName = null;
-      for (int i = 0; i < sourceObj.getJSONArray("hint").length(); i++) {
-        if (!sourceObj.getJSONArray("hint").getString(i).contains("Goal")) {
-          causeName = sourceObj.getJSONArray("hint").getString(i);
+    try {
+      {
+        //copy city and state to _source payload
+        if(sourceObj.has("ui")){
+          JSONObject uiObject = sourceObj.getJSONObject("ui");
+          if(uiObject.has("city")){
+            sourceObj.put("city", uiObject.getString("city"));
+          }
+          if(uiObject.has("state")){
+            sourceObj.put("state", uiObject.getString("state"));
+          }
         }
-      }
-      if (causeName != null) {
-        akaName = nameToken + " " + causeName;
-      } else {
-        akaName = nameToken;
-      }
-      sourceObj.put("aka_name", akaName);
-    }
 
-    if (!sourceObj.has("related_content_name") && randomContentNamePool.size() > 0) {
-      int counter = 3;
-      HashSet<String> relatedContentNamesSet = new HashSet<>();
-      while (counter > 0) {
-        relatedContentNamesSet.add(
-            randomContentNamePool.get(rand.nextInt(randomContentNamePool.size())));
-
-        counter--;
-      }
-      sourceObj.put("related_content_name", relatedContentNamesSet.toArray());
-    }
-
-    sourceObj.put("active_status", trueFalseList.get(rand.nextInt(trueFalseList.size())));
-    sourceObj.put("preferred_by_workplace", 10000 - rand.nextInt(9000));
-    sourceObj.put("created_by", 10000 - rand.nextInt(9000));
-
-    // add content specific data
-
-    // Campaign
-    if (indexName.contains("campaign")) {
-      sourceObj.put(
-          "campaign.has_donations", trueFalseList.get(rand.nextInt(trueFalseList.size())));
-      sourceObj.put("campaign.has_volOp", trueFalseList.get(rand.nextInt(trueFalseList.size())));
-      sourceObj.put("campaign.volOp_owner", 10000 - rand.nextInt(9000));
-      sourceObj.put("campaign.goal", rand.nextInt(100) * 10000);
-      sourceObj.put("campaign.progress_towards_goal", rand.nextInt(100));
-    }
-
-    if (indexName.contains("volunteering")) {
-
-      try {
-        if(sourceObj.has("description")){
-          sourceObj.put("body", sourceObj.getString("description").replaceAll("\\n", ""));
+        // Add related_content_name & aka_name
+        if (indexName.contains("npopage") && sourceObj.has("name")) {
+          JSONArray nameArray = sourceObj.getJSONArray("name");
+          for (int j = 0; (j < nameArray.length() && randomContentNamePool.size() < 10000); j++) {
+            randomContentNamePool.add(nameArray.getString(j));
+          }
         }
-      } catch (Exception e) {
-        System.out.println("Error while processing volOp record : " + sourceObj.toString());
-      }
 
+        if (sourceObj.has("name") && sourceObj.has("hint") && !indexName.contains("volunteering")) {
+          String akaName;
+          // get first string token from name and combine it with non Goal cause name
+          //      		System.out.println("sourceObj.getJSONArray(\"name\") = " +
+          // sourceObj.getJSONArray("name"));
+          String nameToken = sourceObj.getJSONArray("name").getString(0).split(" ")[0];
 
-    	if(sourceObj.has("sdg")){
-    		sourceObj.put("hint", sourceObj.getJSONArray("sdg"));
-		}
-
-    	if(sourceObj.has("aggregatefield")){
-          if(sourceObj.has("description")){
-            String descriptionString = sourceObj.getString("description");
-            JSONArray akaNameJsonArray = sourceObj.getJSONArray("aggregatefield");
-            JSONArray finalAkaNameJsonArray = new JSONArray();
-            for(int i =0; i<akaNameJsonArray.length();i++){
-              if(!akaNameJsonArray.getString(i).equalsIgnoreCase(descriptionString)){
-                finalAkaNameJsonArray.put(akaNameJsonArray.get(i));
-              }
+          String causeName = null;
+          for (int i = 0; i < sourceObj.getJSONArray("hint").length(); i++) {
+            if (!sourceObj.getJSONArray("hint").getString(i).contains("Goal")) {
+              causeName = sourceObj.getJSONArray("hint").getString(i);
             }
-            sourceObj.put("aka_name", finalAkaNameJsonArray);
-          }else{
-            sourceObj.put("aka_name", sourceObj.getJSONArray("aggregatefield"));
+          }
+          if (causeName != null) {
+            akaName = nameToken + " " + causeName;
+          } else {
+            akaName = nameToken;
+          }
+          sourceObj.put("aka_name", akaName);
+        }
+
+        if (!sourceObj.has("related_content_name") && randomContentNamePool.size() > 0) {
+          int counter = 3;
+          HashSet<String> relatedContentNamesSet = new HashSet<>();
+          while (counter > 0) {
+            relatedContentNamesSet.add(
+                    randomContentNamePool.get(rand.nextInt(randomContentNamePool.size())));
+
+            counter--;
+          }
+          sourceObj.put("related_content_name", relatedContentNamesSet.toArray());
+        }
+
+        sourceObj.put("active_status", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+
+        // add content specific data
+
+        // Campaign
+        if (indexName.contains("campaign")) {
+          sourceObj.put(
+                  "campaign.has_donations", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+          sourceObj.put("has_volOp", trueFalseList.get(rand.nextInt(trueFalseList.size())));
+          sourceObj.put("volOp_owner", 10000 - rand.nextInt(9000));
+          sourceObj.put("goal", rand.nextInt(100) * 10000);
+          sourceObj.put("progress_towards_goal", rand.nextInt(100));
+        }
+
+        if (indexName.contains("volunteering")) {
+
+          try {
+            if(sourceObj.has("description")){
+              sourceObj.put("body", sourceObj.getString("description").replaceAll("\\n", ""));
+            }
+          } catch (Exception e) {
+            System.out.println("Error while processing volOp record : " + sourceObj.toString());
           }
 
+
+          if(sourceObj.has("sdg")){
+            sourceObj.put("hint", sourceObj.getJSONArray("sdg"));
+          }
+
+          if(sourceObj.has("aggregatefield")){
+            if(sourceObj.has("description")){
+              String descriptionString = sourceObj.getString("description");
+              JSONArray akaNameJsonArray = sourceObj.getJSONArray("aggregatefield");
+              JSONArray finalAkaNameJsonArray = new JSONArray();
+              for(int i =0; i<akaNameJsonArray.length();i++){
+                if(!akaNameJsonArray.getString(i).equalsIgnoreCase(descriptionString)){
+                  finalAkaNameJsonArray.put(akaNameJsonArray.get(i));
+                }
+              }
+              sourceObj.put("aka_name", finalAkaNameJsonArray);
+            }else{
+              sourceObj.put("aka_name", sourceObj.getJSONArray("aggregatefield"));
+            }
+
+          }
+          sourceObj.put("type", "volunteering");
+          sourceObj.put("goal", rand.nextInt(100) * 10000);
+          sourceObj.put("progress_towards_goal", rand.nextInt(100));
+
+          sourceObj.put(
+                  "volOp_types", volOpTypesList.get(rand.nextInt(volOpTypesList.size())));
+
+          if (sourceObj.has("active_status")
+                  && sourceObj.getString("active_status").equalsIgnoreCase("true")) {
+            sourceObj.put("start_date", RandomDates.createRandomDate(2017, 2018));
+            sourceObj.put("end_date", RandomDates.createRandomDate(2020, 2021));
+          } else {
+            sourceObj.put("start_date", RandomDates.createRandomDate(2015, 2016));
+            sourceObj.put("end_date", RandomDates.createRandomDate(2017, 2018));
+          }
+
+          HashSet<String> volOpAvailableDaysList = new HashSet<>();
+          Integer maxDaysOfTheWeek = rand.nextInt(6);
+          for (int i = 0; i <= maxDaysOfTheWeek; i++) { // add days
+            volOpAvailableDaysList.add(daysOfTheWeek.get(rand.nextInt(daysOfTheWeek.size())));
+          }
+          sourceObj.put("available_days", volOpAvailableDaysList.toArray());
+
+          HashSet<String> volOpAvailableTimesList = new HashSet<>();
+          Integer maxAvailableTimes = rand.nextInt(2);
+          for (int i = 0; i <= maxAvailableTimes; i++) { // add times of day
+            volOpAvailableTimesList.add(timesOfTheDay.get(rand.nextInt(timesOfTheDay.size())));
+          }
+          sourceObj.put("available_time", volOpAvailableTimesList.toArray());
+
+          HashSet<Long> volOpPreferredSkillsList = new HashSet<>();
+          Integer maxPreferredSkills = rand.nextInt(5);
+          for (int i = 0; i <= maxPreferredSkills; i++) { // add times of day
+            volOpPreferredSkillsList.add(
+                    preferredSkillsList.get(rand.nextInt(preferredSkillsList.size())));
+          }
+          sourceObj.put("preferred_skills", volOpPreferredSkillsList.toArray());
         }
-      sourceObj.put("type", "volunteering");
-      sourceObj.put("volunteering.goal", rand.nextInt(100) * 10000);
-      sourceObj.put("volunteering.progress_towards_goal", rand.nextInt(100));
 
-      sourceObj.put(
-          "volunteering.volOp_types", volOpTypesList.get(rand.nextInt(volOpTypesList.size())));
+        if (indexName.contains("story")) {
+          if (sourceObj.has("active_status")
+                  && sourceObj.getString("active_status").equalsIgnoreCase("true")) {
+            sourceObj.put("start_date", RandomDates.createRandomDate(2017, 2018));
+            sourceObj.put("end_date", RandomDates.createRandomDate(2020, 2021));
+          } else {
+            sourceObj.put("start_date", RandomDates.createRandomDate(2015, 2016));
+            sourceObj.put("end_date", RandomDates.createRandomDate(2017, 2018));
+          }
+        }
 
-      if (sourceObj.has("active_status")
-          && sourceObj.getString("active_status").equalsIgnoreCase("true")) {
-        sourceObj.put("volunteering.start_date", RandomDates.createRandomDate(2017, 2018));
-        sourceObj.put("volunteering.end_date", RandomDates.createRandomDate(2020, 2021));
-      } else {
-        sourceObj.put("volunteering.start_date", RandomDates.createRandomDate(2015, 2016));
-        sourceObj.put("volunteering.end_date", RandomDates.createRandomDate(2017, 2018));
+        return sourceObj;
       }
-
-      HashSet<String> volOpAvailableDaysList = new HashSet<>();
-      Integer maxDaysOfTheWeek = rand.nextInt(6);
-      for (int i = 0; i <= maxDaysOfTheWeek; i++) { // add days
-        volOpAvailableDaysList.add(daysOfTheWeek.get(rand.nextInt(daysOfTheWeek.size())));
-      }
-      sourceObj.put("volunteering.available_days", volOpAvailableDaysList.toArray());
-
-      HashSet<String> volOpAvailableTimesList = new HashSet<>();
-      Integer maxAvailableTimes = rand.nextInt(2);
-      for (int i = 0; i <= maxAvailableTimes; i++) { // add times of day
-        volOpAvailableTimesList.add(timesOfTheDay.get(rand.nextInt(timesOfTheDay.size())));
-      }
-      sourceObj.put("volunteering.available_time", volOpAvailableTimesList.toArray());
-
-      HashSet<String> volOpPreferredSkillsList = new HashSet<>();
-      Integer maxPreferredSkills = rand.nextInt(5);
-      for (int i = 0; i <= maxPreferredSkills; i++) { // add times of day
-        volOpPreferredSkillsList.add(
-            preferredSkillsList.get(rand.nextInt(preferredSkillsList.size())));
-      }
-      sourceObj.put("volunteering.preferred_skills", volOpPreferredSkillsList.toArray());
-
-      sourceObj.put("related_content", rand.nextInt(10000));
+    } catch (Exception e) {
+      System.out.println("Error while creating content payload : " + e.getMessage());
+      System.out.println("Json Payload " + sourceObj.toString());
+      e.printStackTrace();
+      return sourceObj;
     }
-
-    if (indexName.contains("story")) {
-      if (sourceObj.has("active_status")
-          && sourceObj.getString("active_status").equalsIgnoreCase("true")) {
-        sourceObj.put("story.start_date", RandomDates.createRandomDate(2017, 2018));
-        sourceObj.put("story.end_date", RandomDates.createRandomDate(2020, 2021));
-      } else {
-        sourceObj.put("story.start_date", RandomDates.createRandomDate(2015, 2016));
-        sourceObj.put("story.end_date", RandomDates.createRandomDate(2017, 2018));
-      }
-    }
-
-    return sourceObj;
   }
 
 }
